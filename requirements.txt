@@ -22,7 +22,7 @@ pyphen
 regex
 requests
 requests_mock
-sentry-sdk[flask]
+sentry-sdk
 sortedcontainers
 SQLAlchemy
 google-cloud-texttospeech
