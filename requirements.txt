@@ -34,3 +34,14 @@ protobuf
 elasticsearch_dsl
 wheel
 pytest
+sentry_sdk
+bs4
+random
+time
+sys
+os
+datetime
+smtplib
+abc
+collections
+urllib

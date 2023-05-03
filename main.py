@@ -3,6 +3,11 @@ import sys
 from git import Repo
 from pathlib import Path
 import re
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from pylab import rcParams
+import networkx as nx
+from networkx.drawing.nx_agraph import graphviz_layout
 
 cwd = os.getcwd()
 CODE_ROOT_FOLDER = cwd + "/content/Zeeguu-API/"
@@ -46,8 +51,11 @@ def get_all_files_without_type(files_to_exclude):
 
 
 files = get_all_files_without_type(files_to_exclude)
+
+
 def code_size(file):
     return sum([1 for line in open(file)])
+
 
 def extract_import_from_line(line):
     # TODO: think about how to detect imports when
@@ -64,7 +72,8 @@ def imports(file_to_get_imports, dependencies):
     for line in lines:
         try:
             import_from_line = extract_import_from_line(line)
-            if not [ele for ele in dependencies if (ele in import_from_line)] and not check_if_Starts(import_from_line,"."):
+            if not [ele for ele in dependencies if (ele in import_from_line)] and not check_if_identical(
+                    import_from_line, ".") and not check_if_identical(import_from_line, ".."):
                 all_imports.append(import_from_line)
         except:
             continue
@@ -91,21 +100,105 @@ def get_imports_for_files(files_to_check, dependencies_to_ignore):
     all_files_with_imports = []
     for file_being_checked in files_to_check:
         try:
-            all_files_with_imports.append(Dependency(module_name_from_file_path(str(file_being_checked)), code_size(file_being_checked),
-                                                     imports(file_being_checked, dependencies_to_ignore)))
+            all_files_with_imports.append(
+                Dependency(module_name_from_file_path(str(file_being_checked)), code_size(file_being_checked),
+                           imports(file_being_checked, dependencies_to_ignore)))
         except:
             continue
 
     return all_files_with_imports
 
 
+def get_imports_for_files_no_smaller_files(files_to_check, dependencies_to_ignore):
+    all_files_with_imports = []
+    for file_being_checked in files_to_check:
+        try:
+            all_files_with_imports.append(
+                Dependency(module_name_from_file_path(str(file_being_checked)), code_size(file_being_checked),
+                           imports_alt(file_being_checked, dependencies_to_ignore)))
+        except:
+            continue
+
+    return all_files_with_imports
+def imports_alt(file_to_get_imports, dependencies):
+    lines = [line for line in open(file_to_get_imports)]
+
+    all_imports = []
+    for line in lines:
+        try:
+            import_from_line = extract_import_from_line(line)
+            if not [ele for ele in dependencies if (ele in import_from_line)] and not check_if_Starts(
+                    import_from_line, "."):
+                all_imports.append(import_from_line)
+        except:
+            continue
+
+    return all_imports
 def check_if_Starts(message_to_check, condition_to_check):
     return message_to_check.startswith(condition_to_check)
 
-assert 'zeeguu.core.model.user' == module_name_from_file_path(file_path('zeeguu/core/model/user.py'))
+
+def check_if_identical(message_to_check, condition_to_check):
+    return message_to_check == condition_to_check
+
+
+def dependencies_digraph(list_of_dependencies, to_exclude):
+    G = nx.DiGraph()
+
+    for dependency in list_of_dependencies:
+        if not [ele for ele in to_exclude if (ele in dependency.name)]:
+            source_module = dependency.name
+
+            if source_module not in G.nodes:
+                G.add_node(source_module, size=dependency.lines_of_code*10)
+
+    for dependency in list_of_dependencies:
+        if not [ele for ele in to_exclude if (ele in dependency.name)]:
+            source_module = dependency.name
+
+            for depends_on in dependency.depends_on:
+                #if not depends_on in G.nodes:
+                    #print(depends_on)
+                if depends_on and depends_on != source_module and not [ele for ele in to_exclude if (ele in depends_on)] and depends_on in G.nodes:
+                    G.add_edge(depends_on, source_module, color='black')
+                    # print(source_module + "=>" + target_module + ".")
+
+    return G
+
+
+def remove_singleEdges(G):
+    print(list(nx.isolates(G)))
+    G.remove_nodes_from(list(nx.isolates(G)))
+    return G
+
+def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
+    plt.figure(figsize=figsize)
+
+    sizes = nx.get_node_attributes(G, "size")
+
+    pos = graphviz_layout(G, prog=prog)
+
+    nx.draw(G, pos=pos,
+            node_color='lightgreen',
+            node_size= list(sizes.values()),
+            font_color="red",
+            font_size="10",
+            with_labels=True,
+            arrows=True)
+    plt.savefig(name)
+    plt.show()
+
+
 print(dependencies_to_ignore)
 print(imports(file_path('zeeguu/core/model/user.py'), dependencies_to_ignore))
 print(len(files))
 processed_files = get_imports_for_files(files, dependencies_to_ignore)
-for file_being_checked in processed_files:
-    print(file_being_checked.name, file_being_checked.lines_of_code, file_being_checked.depends_on)
+DG = dependencies_digraph(processed_files,['zeeguu.core.model'])
+DGWE = remove_singleEdges(DG)
+draw_graph_with_labels(DGWE,  (60, 60), 'neato', "test1.png")
+
+new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
+DGW = dependencies_digraph(new_list,['zeeguu.core.model'])
+draw_graph_with_labels(DGW,  (60, 60), 'neato', "test2.png")
+#for file_being_checked in processed_files:
+    #print(file_being_checked.name, file_being_checked.lines_of_code, file_being_checked.depends_on)
