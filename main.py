@@ -1,3 +1,4 @@
+import copy
 import os
 import sys
 from git import Repo
@@ -120,6 +121,8 @@ def get_imports_for_files_no_smaller_files(files_to_check, dependencies_to_ignor
             continue
 
     return all_files_with_imports
+
+
 def imports_alt(file_to_get_imports, dependencies):
     lines = [line for line in open(file_to_get_imports)]
 
@@ -134,6 +137,8 @@ def imports_alt(file_to_get_imports, dependencies):
             continue
 
     return all_imports
+
+
 def check_if_Starts(message_to_check, condition_to_check):
     return message_to_check.startswith(condition_to_check)
 
@@ -150,18 +155,20 @@ def dependencies_digraph(list_of_dependencies, to_exclude):
             source_module = dependency.name
 
             if source_module not in G.nodes:
-                G.add_node(source_module, size=dependency.lines_of_code*10)
+                G.add_node(source_module, size=dependency.lines_of_code * 10)
 
     for dependency in list_of_dependencies:
         if not [ele for ele in to_exclude if (ele in dependency.name)]:
             source_module = dependency.name
 
             for depends_on in dependency.depends_on:
-                #if not depends_on in G.nodes:
-                    #print(depends_on)
-                if depends_on and depends_on != source_module and not [ele for ele in to_exclude if (ele in depends_on)] and depends_on in G.nodes:
-                    G.add_edge(depends_on, source_module, color='black')
-                    # print(source_module + "=>" + target_module + ".")
+                if not [ele for ele in to_exclude if (ele in depends_on)]:
+                    if depends_on not in G.nodes:
+                        G.add_node(depends_on, size=10)
+
+                    if depends_on and depends_on != source_module and depends_on in G.nodes:
+                        G.add_edge(depends_on, source_module, color='black')
+                        # print(source_module + "=>" + target_module + ".")
 
     return G
 
@@ -170,6 +177,7 @@ def remove_singleEdges(G):
     print(list(nx.isolates(G)))
     G.remove_nodes_from(list(nx.isolates(G)))
     return G
+
 
 def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
     plt.figure(figsize=figsize)
@@ -180,7 +188,7 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
 
     nx.draw(G, pos=pos,
             node_color='lightgreen',
-            node_size= list(sizes.values()),
+            node_size=list(sizes.values()),
             font_color="red",
             font_size="10",
             with_labels=True,
@@ -193,12 +201,74 @@ print(dependencies_to_ignore)
 print(imports(file_path('zeeguu/core/model/user.py'), dependencies_to_ignore))
 print(len(files))
 processed_files = get_imports_for_files(files, dependencies_to_ignore)
-DG = dependencies_digraph(processed_files,['zeeguu.core.model'])
+DG = dependencies_digraph(processed_files, [".."])
 DGWE = remove_singleEdges(DG)
-draw_graph_with_labels(DGWE,  (60, 60), 'neato', "test1.png")
+
+
+# draw_graph_with_labels(DGWE,  (60, 60), 'neato', "test1.png")
 
 new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
-DGW = dependencies_digraph(new_list,['zeeguu.core.model'])
-draw_graph_with_labels(DGW,  (60, 60), 'neato', "test2.png")
-#for file_being_checked in processed_files:
-    #print(file_being_checked.name, file_being_checked.lines_of_code, file_being_checked.depends_on)
+DGW = dependencies_digraph(new_list,[])
+DGWEe = remove_singleEdges(DGW)
+# draw_graph_with_labels(DGW,  (60, 60), 'neato', "test2.png")
+
+def has_depth(module_name, currentDepth):
+    if "." in module_name:
+        components = module_name.split(".")
+        return len(components) - 1 >= currentDepth
+    else:
+        return 1 >= currentDepth
+
+
+def getLast(module_name):
+    components = module_name.split(".")
+    return components[len(components) - 1]
+
+
+def get_level_module(module_name, depth):
+    if "." in module_name:
+        components = module_name.split(".")
+        result = ""
+        for count, ele in enumerate(components):
+
+            result = result + "." + ele
+
+            if count == depth:
+                return result
+
+    else:
+        return module_name
+
+
+def abstraceted_to_top_level(G):
+    aG = nx.DiGraph()
+    newcopy = list(copy.deepcopy(G.nodes()))
+    x = 0
+    while len(newcopy) > 0:
+        for item in newcopy:
+            if has_depth(item, x):
+                if get_level_module(item, x) not in G.nodes and get_level_module(item, x) != "":
+                    aG.add_node(get_level_module(item, x), size=40)
+                    if x > 0 and get_level_module(item, x - 1) != "":
+                        source = get_level_module(item, x - 1)
+                        destination = get_level_module(item, x)
+                        if source != destination:
+                            aG.add_edge(destination, source, color='black')
+
+        newcopy2 = copy.deepcopy(newcopy)
+        for item in newcopy:
+            if not has_depth(item, x):
+                newcopy2.remove(item)
+        newcopy = newcopy2
+        x = x + 1
+
+    return aG
+
+
+aG = abstraceted_to_top_level(DGWEe)
+draw_graph_with_labels(aG, (60, 60), 'circo', "test7.png")
+draw_graph_with_labels(aG, (60, 60), 'neato', "test5.png")
+# draw_graph_with_labels(aG, (60, 60))
+# draw_graph_with_labels(aG, (60, 60), 'circo', "test6.png")
+# for file_being_checked in processed_files:
+# print(file_being_checked.name, file_being_checked.lines_of_code, file_being_checked.depends_on)
