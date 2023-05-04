@@ -185,8 +185,7 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
     sizes = nx.get_node_attributes(G, "size")
 
     colors = nx.get_node_attributes(G, "color")
-    print(len(G.nodes()))
-    print(len(sizes))
+
     pos = graphviz_layout(G, prog=prog)
 
     nx.draw(G, pos=pos,
@@ -207,14 +206,14 @@ processed_files = get_imports_for_files(files, dependencies_to_ignore)
 DG = dependencies_digraph(processed_files, [])
 DGWE = remove_singleEdges(DG)
 
-draw_graph_with_labels(DGWE,  (60, 60), 'neato', "test1.png")
+draw_graph_with_labels(DGWE,  (60, 60), 'neato', "dependency_graph_1.png")
 
 new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
 DGW = dependencies_digraph(new_list, [])
 DGWEe = remove_singleEdges(DGW)
 
 
-draw_graph_with_labels(DGWEe,  (60, 60), 'neato', "test2.png")
+draw_graph_with_labels(DGWEe,  (60, 60), 'neato', "dependency_graph_2.png")
 
 def has_depth(module_name, currentDepth):
     if "." in module_name:
@@ -321,9 +320,42 @@ def abstraceted_to_top_level(G):
     return aG
 
 
+def abstraceted_to_top_level_connection_version(G):
+    aG = nx.DiGraph()
+    newcopy = list(copy.deepcopy(G.nodes()))
+    x = 0
+    while len(newcopy) > 0:
+        for item in newcopy:
+            if has_depth(item, x):
+                if get_level_module(item, x) not in aG.nodes and get_level_module(item, x) != "":
+                    if x == 0:
+                        aG.add_node(get_level_module(item, x), size=calculate_how_many_connections(G,get_level_module_no_skip(item, x)), color="orange")
+                    else:
+                        aG.add_node(get_level_module(item, x), size=calculate_how_many_connections(G,get_level_module_no_skip(item, x)), color="lightblue")
+                    if x > 0 and get_level_module(item, x - 1) != "":
+                        source = get_level_module(item, x - 1)
+                        destination = get_level_module(item, x)
+                        if source != destination:
+                            aG.add_edge(destination, source, color='black')
+
+        newcopy2 = copy.deepcopy(newcopy)
+        for item in newcopy:
+            if not has_depth(item, x):
+                newcopy2.remove(item)
+        newcopy = newcopy2
+        x = x + 1
+
+    return aG
+
+
+
 aG = abstraceted_to_top_level(DGWEe)
-draw_graph_with_labels(aG, (60, 60), 'circo', "test7.png")
-draw_graph_with_labels(aG, (60, 60), 'neato', "test5.png")
+draw_graph_with_labels(aG, (60, 60), 'circo', "code_size_graph_v1.png")
+draw_graph_with_labels(aG, (60, 60), 'neato', "code_size_graph_v2.png")
+
+aGE = abstraceted_to_top_level_connection_version(DGWEe)
+draw_graph_with_labels(aGE, (60, 60), 'circo', "connection_graph_v1.png")
+draw_graph_with_labels(aGE, (60, 60), 'neato', "connection_graph_v2.png")
 # draw_graph_with_labels(aG, (60, 60))
 # draw_graph_with_labels(aG, (60, 60), 'circo', "test6.png")
 # for file_being_checked in processed_files:
