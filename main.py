@@ -155,7 +155,7 @@ def dependencies_digraph(list_of_dependencies, to_exclude):
             source_module = dependency.name
 
             if source_module not in G.nodes:
-                G.add_node(source_module, size=dependency.lines_of_code * 10)
+                G.add_node(source_module, size=dependency.lines_of_code * 10, color="lightblue")
 
     for dependency in list_of_dependencies:
         if not [ele for ele in to_exclude if (ele in dependency.name)]:
@@ -164,7 +164,7 @@ def dependencies_digraph(list_of_dependencies, to_exclude):
             for depends_on in dependency.depends_on:
                 if not [ele for ele in to_exclude if (ele in depends_on)]:
                     if depends_on not in G.nodes:
-                        G.add_node(depends_on, size=10)
+                        G.add_node(depends_on, size=10, color="lightblue")
 
                     if depends_on and depends_on != source_module and depends_on in G.nodes:
                         G.add_edge(depends_on, source_module, color='black')
@@ -183,12 +183,14 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
     plt.figure(figsize=figsize)
 
     sizes = nx.get_node_attributes(G, "size")
+
+    colors = nx.get_node_attributes(G, "color")
     print(len(G.nodes()))
     print(len(sizes))
     pos = graphviz_layout(G, prog=prog)
 
     nx.draw(G, pos=pos,
-            node_color='lightgreen',
+            node_color=list(colors.values()),
             node_size=list(sizes.values()),
             font_color="red",
             font_size="10",
@@ -202,17 +204,17 @@ print(dependencies_to_ignore)
 print(imports(file_path('zeeguu/core/model/user.py'), dependencies_to_ignore))
 print(len(files))
 processed_files = get_imports_for_files(files, dependencies_to_ignore)
-DG = dependencies_digraph(processed_files, [".."])
+DG = dependencies_digraph(processed_files, [])
 DGWE = remove_singleEdges(DG)
 
-# draw_graph_with_labels(DGWE,  (60, 60), 'neato', "test1.png")
+draw_graph_with_labels(DGWE,  (60, 60), 'neato', "test1.png")
 
 new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
 DGW = dependencies_digraph(new_list, [])
 DGWEe = remove_singleEdges(DGW)
 
 
-# draw_graph_with_labels(DGW,  (60, 60), 'neato', "test2.png")
+draw_graph_with_labels(DGWEe,  (60, 60), 'neato', "test2.png")
 
 def has_depth(module_name, currentDepth):
     if "." in module_name:
@@ -273,7 +275,7 @@ def get_level_module_no_skip(module_name, depth):
 
 def calculate_how_many_connections(G, currentItem):
     sizes = nx.get_node_attributes(G, "size")
-    mentions = 1
+    mentions = 100
     for key, val in sizes.items():
         if currentItem in key and currentItem != key:
             mentions = mentions + 100
@@ -283,10 +285,9 @@ def calculate_how_many_connections(G, currentItem):
 
 def calculate_total_amount_of_code(G, currentItem):
     sizes = nx.get_node_attributes(G, "size")
-    totalCode = 1
+    totalCode = 100
     for key, val in sizes.items():
         if key == currentItem:
-            print(key, currentItem)
             totalCode = totalCode + val
 
     return totalCode
@@ -299,10 +300,11 @@ def abstraceted_to_top_level(G):
     while len(newcopy) > 0:
         for item in newcopy:
             if has_depth(item, x):
-                print(item, x)
-                print(get_level_module(item, x))
                 if get_level_module(item, x) not in aG.nodes and get_level_module(item, x) != "":
-                    aG.add_node(get_level_module(item, x), size=calculate_total_amount_of_code(G,get_level_module_no_skip(item, x)))
+                    if x == 0:
+                        aG.add_node(get_level_module(item, x), size=calculate_total_amount_of_code(G,get_level_module_no_skip(item, x)), color="orange")
+                    else:
+                        aG.add_node(get_level_module(item, x), size=calculate_total_amount_of_code(G,get_level_module_no_skip(item, x)), color="lightblue")
                     if x > 0 and get_level_module(item, x - 1) != "":
                         source = get_level_module(item, x - 1)
                         destination = get_level_module(item, x)
