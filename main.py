@@ -183,7 +183,8 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
     plt.figure(figsize=figsize)
 
     sizes = nx.get_node_attributes(G, "size")
-
+    print(len(G.nodes()))
+    print(len(sizes))
     pos = graphviz_layout(G, prog=prog)
 
     nx.draw(G, pos=pos,
@@ -204,12 +205,13 @@ processed_files = get_imports_for_files(files, dependencies_to_ignore)
 DG = dependencies_digraph(processed_files, [".."])
 DGWE = remove_singleEdges(DG)
 
-
 # draw_graph_with_labels(DGWE,  (60, 60), 'neato', "test1.png")
 
 new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
-DGW = dependencies_digraph(new_list,[])
+DGW = dependencies_digraph(new_list, [])
 DGWEe = remove_singleEdges(DGW)
+
+
 # draw_graph_with_labels(DGW,  (60, 60), 'neato', "test2.png")
 
 def has_depth(module_name, currentDepth):
@@ -227,17 +229,67 @@ def getLast(module_name):
 
 def get_level_module(module_name, depth):
     if "." in module_name:
+        skip = 0
+        if depth > 1:
+            skip = depth-1
+
         components = module_name.split(".")
-        result = ""
-        for count, ele in enumerate(components):
+        result = components[skip]
+        newComp = components[skip+1:]
+        if len(newComp) == 0 or depth == 0:
+            return result
+        else:
+            count = 1 + skip
+            for ele in newComp:
 
-            result = result + "." + ele
+                result = result + "." + ele
 
-            if count == depth:
-                return result
+                if count == depth:
+                    return result
+                count = count + 1
 
     else:
         return module_name
+
+def get_level_module_no_skip(module_name, depth):
+    if "." in module_name:
+        components = module_name.split(".")
+        result = components[0]
+        newComp = components[1:]
+        if len(newComp) == 0 or depth == 0:
+            return result
+        else:
+            count = 1
+            for ele in newComp:
+
+                result = result + "." + ele
+
+                if count == depth:
+                    return result
+                count = count + 1
+
+    else:
+        return module_name
+
+def calculate_how_many_connections(G, currentItem):
+    sizes = nx.get_node_attributes(G, "size")
+    mentions = 1
+    for key, val in sizes.items():
+        if currentItem in key and currentItem != key:
+            mentions = mentions + 100
+
+    return mentions
+
+
+def calculate_total_amount_of_code(G, currentItem):
+    sizes = nx.get_node_attributes(G, "size")
+    totalCode = 1
+    for key, val in sizes.items():
+        if key == currentItem:
+            print(key, currentItem)
+            totalCode = totalCode + val
+
+    return totalCode
 
 
 def abstraceted_to_top_level(G):
@@ -247,8 +299,10 @@ def abstraceted_to_top_level(G):
     while len(newcopy) > 0:
         for item in newcopy:
             if has_depth(item, x):
-                if get_level_module(item, x) not in G.nodes and get_level_module(item, x) != "":
-                    aG.add_node(get_level_module(item, x), size=40)
+                print(item, x)
+                print(get_level_module(item, x))
+                if get_level_module(item, x) not in aG.nodes and get_level_module(item, x) != "":
+                    aG.add_node(get_level_module(item, x), size=calculate_total_amount_of_code(G,get_level_module_no_skip(item, x)))
                     if x > 0 and get_level_module(item, x - 1) != "":
                         source = get_level_module(item, x - 1)
                         destination = get_level_module(item, x)
