@@ -196,7 +196,7 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
             with_labels=True,
             arrows=True)
     plt.savefig(name)
-    #plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -399,7 +399,7 @@ def add_dependency_edges(G, aG, depth_cap=-1, ignore_edges=[]):
     return aG
 
 
-files_to_exclude = []
+files_to_exclude = ["test", "model", "tools"]
 files = get_all_files_without_type(files_to_exclude)
 
 # processed_files = get_imports_for_files(files, dependencies_to_ignore)
@@ -407,23 +407,23 @@ files = get_all_files_without_type(files_to_exclude)
 # DGWE = remove_singleEdges(DG)
 for x in range(5):
     new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
-    DGW = dependencies_digraph(new_list, [])
+    DGW = dependencies_digraph(new_list, ["test", "model", "tools", "util"])
     DGWEe = remove_singleEdges(DGW)
 
     aG = abstraceted_to_top_level(DGWEe, x)
     removed_aG = remove_singleEdges(aG)
     addedEdges_code = add_dependency_edges(DGWEe, removed_aG, x, ["tools", "model", "test"])
-    draw_graph_with_labels(addedEdges_code, (50, 50), 'circo', "code_size_graph_v1_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges_code, (50, 50), 'neato', "code_size_graph_v2_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges_code, (50, 50), 'twopi', "code_size_graph_v3_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges_code, (40, 40), 'circo', "code_size_graph_v1_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges_code, (40, 40), 'neato', "code_size_graph_v2_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges_code, (40, 40), 'twopi', "code_size_graph_v3_" + str(x) + ".png")
 
     aGE = abstraceted_to_top_level_connection_version(DGWEe, x)
     removed_aGE = remove_singleEdges(aGE)
     addedEdges = add_dependency_edges(DGWEe, removed_aGE, x, ["tools", "model", "test"])
 
-    draw_graph_with_labels(addedEdges, (50, 50), 'circo', "connection_graph_v1_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges, (50, 50), 'neato', "connection_graph_v2_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges, (50, 50), 'twopi', "connection_graph_v3_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (40, 40), 'circo', "connection_graph_v1_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (40, 40), 'neato', "connection_graph_v2_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (40, 40), 'twopi', "connection_graph_v3_" + str(x) + ".png")
 # draw_graph_with_labels(aG, (60, 60))
 # draw_graph_with_labels(aG, (60, 60), 'circo', "test6.png")
 # for file_being_checked in processed_files:
