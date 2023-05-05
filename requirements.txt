@@ -45,3 +45,5 @@ smtplib
 abc
 collections
 urllib
+dateutil
+unittest

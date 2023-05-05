@@ -15,7 +15,7 @@ CODE_ROOT_FOLDER = cwd + "/content/Zeeguu-API/"
 
 Requirements_Folder = cwd + "/requirements.txt"
 
-files_to_exclude = ['', 'test']
+files_to_exclude = ["test", "model", "tools"]
 
 
 class Dependency:
@@ -46,12 +46,9 @@ with open(Requirements_Folder) as file:
 def get_all_files_without_type(files_to_exclude):
     files = []
     for file in Path(CODE_ROOT_FOLDER).rglob("*.py"):
-        if [x for x in files_to_exclude if x not in file.as_uri()]:
+        if not [ele for ele in files_to_exclude if (ele in file.as_uri())]:
             files.append(file)
     return files
-
-
-files = get_all_files_without_type(files_to_exclude)
 
 
 def code_size(file):
@@ -186,41 +183,51 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
 
     colors = nx.get_node_attributes(G, "color")
 
+    colors_of_edge = nx.get_edge_attributes(G, 'color')
+
     pos = graphviz_layout(G, prog=prog)
 
     nx.draw(G, pos=pos,
             node_color=list(colors.values()),
             node_size=list(sizes.values()),
+            edge_color=list(colors_of_edge.values()),
             font_color="red",
-            font_size="10",
+            font_size="12",
             with_labels=True,
             arrows=True)
     plt.savefig(name)
-    plt.show()
+    #plt.show()
+    plt.close()
 
 
 print(dependencies_to_ignore)
 print(imports(file_path('zeeguu/core/model/user.py'), dependencies_to_ignore))
+files = get_all_files_without_type(files_to_exclude)
 print(len(files))
 processed_files = get_imports_for_files(files, dependencies_to_ignore)
-DG = dependencies_digraph(processed_files, [])
+DG = dependencies_digraph(processed_files, ["test", "model", "tools", "util"])
 DGWE = remove_singleEdges(DG)
-
-draw_graph_with_labels(DGWE,  (60, 60), 'neato', "dependency_graph_1.png")
+# draw_graph_with_labels(DGWE, (60, 60), 'neato', "dependency_graph_v1.png")
+# draw_graph_with_labels(DGWE, (60, 60), 'circo', "dependency_graph_v2.png")
 
 new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
-DGW = dependencies_digraph(new_list, [])
+DGW = dependencies_digraph(new_list, ["test", "model", "tools", "util"])
 DGWEe = remove_singleEdges(DGW)
 
 
-draw_graph_with_labels(DGWEe,  (60, 60), 'neato', "dependency_graph_2.png")
+# draw_graph_with_labels(DGWEe, (60, 60), 'neato', "dependency_graph_v3.png")
+# draw_graph_with_labels(DGWEe, (60, 60), 'circo', "dependency_graph_v4.png")
 
-def has_depth(module_name, currentDepth):
+
+def has_depth(module_name, current_depth, depth_cap):
     if "." in module_name:
         components = module_name.split(".")
-        return len(components) - 1 >= currentDepth
+        if depth_cap > 0:
+            return len(components) - 1 >= current_depth and depth_cap >= current_depth
+        else:
+            return len(components) - 1 >= current_depth
     else:
-        return 1 >= currentDepth
+        return 1 >= current_depth
 
 
 def getLast(module_name):
@@ -232,11 +239,11 @@ def get_level_module(module_name, depth):
     if "." in module_name:
         skip = 0
         if depth > 1:
-            skip = depth-1
+            skip = depth - 1
 
         components = module_name.split(".")
         result = components[skip]
-        newComp = components[skip+1:]
+        newComp = components[skip + 1:]
         if len(newComp) == 0 or depth == 0:
             return result
         else:
@@ -251,6 +258,7 @@ def get_level_module(module_name, depth):
 
     else:
         return module_name
+
 
 def get_level_module_no_skip(module_name, depth):
     if "." in module_name:
@@ -272,6 +280,7 @@ def get_level_module_no_skip(module_name, depth):
     else:
         return module_name
 
+
 def calculate_how_many_connections(G, currentItem):
     sizes = nx.get_node_attributes(G, "size")
     mentions = 100
@@ -292,18 +301,22 @@ def calculate_total_amount_of_code(G, currentItem):
     return totalCode
 
 
-def abstraceted_to_top_level(G):
+def abstraceted_to_top_level(G, depth_cap=-1):
     aG = nx.DiGraph()
     newcopy = list(copy.deepcopy(G.nodes()))
     x = 0
     while len(newcopy) > 0:
         for item in newcopy:
-            if has_depth(item, x):
+            if has_depth(item, x, depth_cap):
                 if get_level_module(item, x) not in aG.nodes and get_level_module(item, x) != "":
                     if x == 0:
-                        aG.add_node(get_level_module(item, x), size=calculate_total_amount_of_code(G,get_level_module_no_skip(item, x)), color="orange")
+                        aG.add_node(get_level_module(item, x),
+                                    size=calculate_total_amount_of_code(G, get_level_module_no_skip(item, x)) + 500,
+                                    color="orange")
                     else:
-                        aG.add_node(get_level_module(item, x), size=calculate_total_amount_of_code(G,get_level_module_no_skip(item, x)), color="lightblue")
+                        aG.add_node(get_level_module(item, x),
+                                    size=calculate_total_amount_of_code(G, get_level_module_no_skip(item, x)),
+                                    color="lightblue")
                     if x > 0 and get_level_module(item, x - 1) != "":
                         source = get_level_module(item, x - 1)
                         destination = get_level_module(item, x)
@@ -312,7 +325,7 @@ def abstraceted_to_top_level(G):
 
         newcopy2 = copy.deepcopy(newcopy)
         for item in newcopy:
-            if not has_depth(item, x):
+            if not has_depth(item, x, depth_cap):
                 newcopy2.remove(item)
         newcopy = newcopy2
         x = x + 1
@@ -320,18 +333,22 @@ def abstraceted_to_top_level(G):
     return aG
 
 
-def abstraceted_to_top_level_connection_version(G):
+def abstraceted_to_top_level_connection_version(G, depth_cap=-1):
     aG = nx.DiGraph()
     newcopy = list(copy.deepcopy(G.nodes()))
     x = 0
     while len(newcopy) > 0:
         for item in newcopy:
-            if has_depth(item, x):
+            if has_depth(item, x, depth_cap):
                 if get_level_module(item, x) not in aG.nodes and get_level_module(item, x) != "":
                     if x == 0:
-                        aG.add_node(get_level_module(item, x), size=calculate_how_many_connections(G,get_level_module_no_skip(item, x)), color="orange")
+                        aG.add_node(get_level_module(item, x),
+                                    size=calculate_how_many_connections(G, get_level_module_no_skip(item, x)),
+                                    color="orange")
                     else:
-                        aG.add_node(get_level_module(item, x), size=calculate_how_many_connections(G,get_level_module_no_skip(item, x)), color="lightblue")
+                        aG.add_node(get_level_module(item, x),
+                                    size=calculate_how_many_connections(G, get_level_module_no_skip(item, x)),
+                                    color="lightblue")
                     if x > 0 and get_level_module(item, x - 1) != "":
                         source = get_level_module(item, x - 1)
                         destination = get_level_module(item, x)
@@ -340,7 +357,7 @@ def abstraceted_to_top_level_connection_version(G):
 
         newcopy2 = copy.deepcopy(newcopy)
         for item in newcopy:
-            if not has_depth(item, x):
+            if not has_depth(item, x, depth_cap):
                 newcopy2.remove(item)
         newcopy = newcopy2
         x = x + 1
@@ -348,14 +365,65 @@ def abstraceted_to_top_level_connection_version(G):
     return aG
 
 
+def get_biggest_reference(aG, target, depth_cap):
+    if depth_cap < 0:
+        depth_cap = 100
+    isFound = False
+    valueToGet = ""
+    current_cap = depth_cap
+    while not isFound:
+        for node in aG.nodes():
+            if has_depth(target, current_cap, depth_cap):
+                if node == get_level_module(target, current_cap):
+                    isFound = True
+                    valueToGet = node
+                    break
+        current_cap = current_cap - 1
+        if current_cap < 0:
+            isFound = True
+            break
 
-aG = abstraceted_to_top_level(DGWEe)
-draw_graph_with_labels(aG, (60, 60), 'circo', "code_size_graph_v1.png")
-draw_graph_with_labels(aG, (60, 60), 'neato', "code_size_graph_v2.png")
+    return valueToGet
 
-aGE = abstraceted_to_top_level_connection_version(DGWEe)
-draw_graph_with_labels(aGE, (60, 60), 'circo', "connection_graph_v1.png")
-draw_graph_with_labels(aGE, (60, 60), 'neato', "connection_graph_v2.png")
+
+def add_dependency_edges(G, aG, depth_cap=-1, ignore_edges=[]):
+    for each in G.edges():
+        if not [ele for ele in ignore_edges if (ele in each[0])] and not [ele for ele in ignore_edges if
+                                                                          (ele in each[1])]:
+            source = get_biggest_reference(aG, each[0], depth_cap)
+            destination = get_biggest_reference(aG, each[1], depth_cap)
+            if source != destination and aG.has_node(source) and aG.has_node(destination) and not aG.has_edge(
+                    destination, source):
+                aG.add_edge(source, destination, color='orange')
+            # aG.add_edge(source, destination)
+    return aG
+
+
+files_to_exclude = []
+files = get_all_files_without_type(files_to_exclude)
+
+# processed_files = get_imports_for_files(files, dependencies_to_ignore)
+# DG = dependencies_digraph(processed_files, ["test", "model", "tools", "util"])
+# DGWE = remove_singleEdges(DG)
+for x in range(5):
+    new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
+    DGW = dependencies_digraph(new_list, [])
+    DGWEe = remove_singleEdges(DGW)
+
+    aG = abstraceted_to_top_level(DGWEe, x)
+    removed_aG = remove_singleEdges(aG)
+    addedEdges_code = add_dependency_edges(DGWEe, removed_aG, x, ["tools", "model", "test"])
+    draw_graph_with_labels(addedEdges_code, (50, 50), 'circo', "code_size_graph_v1_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges_code, (50, 50), 'neato', "code_size_graph_v2_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges_code, (50, 50), 'twopi', "code_size_graph_v3_" + str(x) + ".png")
+
+    aGE = abstraceted_to_top_level_connection_version(DGWEe, x)
+    removed_aGE = remove_singleEdges(aGE)
+    addedEdges = add_dependency_edges(DGWEe, removed_aGE, x, ["tools", "model", "test"])
+
+    draw_graph_with_labels(addedEdges, (50, 50), 'circo', "connection_graph_v1_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (50, 50), 'neato', "connection_graph_v2_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (50, 50), 'twopi', "connection_graph_v3_" + str(x) + ".png")
 # draw_graph_with_labels(aG, (60, 60))
 # draw_graph_with_labels(aG, (60, 60), 'circo', "test6.png")
 # for file_being_checked in processed_files:
