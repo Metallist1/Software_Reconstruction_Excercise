@@ -192,7 +192,7 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
             node_size=list(sizes.values()),
             edge_color=list(colors_of_edge.values()),
             font_color="red",
-            font_size="12",
+            font_size="18",
             with_labels=True,
             arrows=True)
     plt.savefig(name)
@@ -399,31 +399,31 @@ def add_dependency_edges(G, aG, depth_cap=-1, ignore_edges=[]):
     return aG
 
 
-files_to_exclude = ["test", "model", "tools"]
+files_to_exclude = ["test", "model", "tools", "util"]
 files = get_all_files_without_type(files_to_exclude)
 
 # processed_files = get_imports_for_files(files, dependencies_to_ignore)
 # DG = dependencies_digraph(processed_files, ["test", "model", "tools", "util"])
 # DGWE = remove_singleEdges(DG)
-for x in range(5):
+for x in range(3):
     new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
     DGW = dependencies_digraph(new_list, ["test", "model", "tools", "util"])
     DGWEe = remove_singleEdges(DGW)
 
     aG = abstraceted_to_top_level(DGWEe, x)
     removed_aG = remove_singleEdges(aG)
-    addedEdges_code = add_dependency_edges(DGWEe, removed_aG, x, ["tools", "model", "test"])
-    draw_graph_with_labels(addedEdges_code, (40, 40), 'circo', "code_size_graph_v1_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges_code, (40, 40), 'neato', "code_size_graph_v2_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges_code, (40, 40), 'twopi', "code_size_graph_v3_" + str(x) + ".png")
+    addedEdges_code = add_dependency_edges(DGWEe, removed_aG, x, ["tools", "test", "model"])
+    draw_graph_with_labels(addedEdges_code, (30, 30), 'circo', "code_size_graph_v1_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges_code, (30, 30), 'neato', "code_size_graph_v2_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges_code, (30, 30), 'twopi', "code_size_graph_v3_" + str(x) + ".png")
 
     aGE = abstraceted_to_top_level_connection_version(DGWEe, x)
     removed_aGE = remove_singleEdges(aGE)
-    addedEdges = add_dependency_edges(DGWEe, removed_aGE, x, ["tools", "model", "test"])
+    addedEdges = add_dependency_edges(DGWEe, removed_aGE, x, ["tools", "test", "model"])
 
-    draw_graph_with_labels(addedEdges, (40, 40), 'circo', "connection_graph_v1_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges, (40, 40), 'neato', "connection_graph_v2_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges, (40, 40), 'twopi', "connection_graph_v3_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (30, 30), 'circo', "connection_graph_v1_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (30, 30), 'neato', "connection_graph_v2_" + str(x) + ".png")
+    draw_graph_with_labels(addedEdges, (30, 30), 'twopi', "connection_graph_v3_" + str(x) + ".png")
 # draw_graph_with_labels(aG, (60, 60))
 # draw_graph_with_labels(aG, (60, 60), 'circo', "test6.png")
 # for file_being_checked in processed_files:
