@@ -317,10 +317,11 @@ def calculate_how_many_connections(G, currentItem):
 
 def calculate_total_amount_of_code(G, currentItem):
     sizes = nx.get_node_attributes(G, "size")
-    totalCode = 10
+    totalCode = 10 # Initial node size
     for key, val in sizes.items():
         if key == currentItem:
             totalCode = totalCode + val
+            # Reduce code size by certain % as the node size becomes extremely large.
             if totalCode > 50:
                 totalCode = totalCode / 10
 
