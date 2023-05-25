@@ -200,19 +200,16 @@ def draw_graph_with_labels(G, figsize=(10, 10), prog='twopi', name="test4.png"):
     plt.close()
 
 
-print(dependencies_to_ignore)
-print(imports(file_path('zeeguu/core/model/user.py'), dependencies_to_ignore))
-files = get_all_files_without_type(files_to_exclude)
-print(len(files))
-processed_files = get_imports_for_files(files, dependencies_to_ignore)
-DG = dependencies_digraph(processed_files, ["test", "model", "tools", "util"])
-DGWE = remove_singleEdges(DG)
+# files = get_all_files_without_type(files_to_exclude)
+# processed_files = get_imports_for_files(files, dependencies_to_ignore)
+# DG = dependencies_digraph(processed_files, ["test", "model", "tools", "util"])
+# DGWE = remove_singleEdges(DG)
 # draw_graph_with_labels(DGWE, (60, 60), 'neato', "dependency_graph_v1.png")
 # draw_graph_with_labels(DGWE, (60, 60), 'circo', "dependency_graph_v2.png")
 
-new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
-DGW = dependencies_digraph(new_list, ["test", "model", "tools", "util"])
-DGWEe = remove_singleEdges(DGW)
+# new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
+# DGW = dependencies_digraph(new_list, ["test", "model", "tools", "util"])
+# DGWEe = remove_singleEdges(DGW)
 
 
 # draw_graph_with_labels(DGWEe, (60, 60), 'neato', "dependency_graph_v3.png")
@@ -311,6 +308,7 @@ def calculate_how_many_connections(G, currentItem):
     mentions = 10
     for key, val in sizes.items():
         if currentItem in key and currentItem != key:
+            # Limit size to 50 for readabily.
             if mentions < 50:
                 mentions = mentions + 1
 
@@ -319,10 +317,12 @@ def calculate_how_many_connections(G, currentItem):
 
 def calculate_total_amount_of_code(G, currentItem):
     sizes = nx.get_node_attributes(G, "size")
-    totalCode = 1
+    totalCode = 10
     for key, val in sizes.items():
         if key == currentItem:
             totalCode = totalCode + val
+            if totalCode > 50:
+                totalCode = totalCode / 10
 
     return totalCode
 
@@ -338,7 +338,7 @@ def abstraceted_to_top_level(G, depth_cap=-1):
                     if x == 0:
                         aG.add_node(get_level_module(item, x),
                                     label=get_level_name(item, x),
-                                    size=calculate_total_amount_of_code(G, get_level_module_no_skip(item, x)) + 5,
+                                    size=calculate_total_amount_of_code(G, get_level_module_no_skip(item, x)) + 50,
                                     color="orange")
                     else:
                         aG.add_node(get_level_module(item, x),
@@ -429,32 +429,6 @@ def add_dependency_edges(G, aG, depth_cap=-1, ignore_edges=[]):
     return aG
 
 
-files_to_exclude = ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python", "util"]
-files = get_all_files_without_type(files_to_exclude)
-# "tools","test",  "model", "apimux","wordstats", "setuptools","python", "util"
-# processed_files = get_imports_for_files(files, dependencies_to_ignore)
-# DG = dependencies_digraph(processed_files, ["test", "model", "tools", "util"])
-# DGWE = remove_singleEdges(DG)
-
-new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
-DGW = dependencies_digraph(new_list, ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python", "util"])
-DGWEe = remove_singleEdges(DGW)
-
-aG = abstraceted_to_top_level(DGWEe, 4)
-removed_aG = remove_singleEdges(aG)
-addedEdges_code = add_dependency_edges(DGWEe, removed_aG, 4,
-                                       ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python",
-                                        "util"])
-# draw_graph_with_labels(addedEdges_code, (30, 30), 'circo', "code_size_graph_v1_" + str(4) + ".png")
-# draw_graph_with_labels(addedEdges_code, (30, 30), 'neato', "code_size_graph_v2_" + str(4) + ".png")
-# draw_graph_with_labels(addedEdges_code, (30, 30), 'twopi', "code_size_graph_v3_" + str(4) + ".png")
-
-aGE = abstraceted_to_top_level_connection_version(DGWEe, 4)
-removed_aGE = remove_singleEdges(aGE)
-addedEdges = add_dependency_edges(DGWEe, removed_aGE, 4,
-                                  ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python", "util"])
-
-
 def draw_graph3(networkx_graph, notebook=True, output_filename='graph.html', show_buttons=True,
                 only_physics_buttons=False):
     """
@@ -508,14 +482,33 @@ def draw_graph3(networkx_graph, notebook=True, output_filename='graph.html', sho
             pyvis_graph.show_buttons()
 
     # return and also save
-    return pyvis_graph.show("WOWWW.html")
+    return pyvis_graph.show(output_filename)
 
 
-draw_graph3(addedEdges)
-# draw_graph_with_labels(addedEdges, (30, 30), 'circo', "connection_graph_v1_" + str(4) + ".png")
-# draw_graph_with_labels(addedEdges, (30, 30), 'neato', "connection_graph_v2_" + str(4) + ".png")
-# draw_graph_with_labels(addedEdges, (30, 30), 'twopi', "connection_graph_v3_" + str(4) + ".png")
-# draw_graph_with_labels(aG, (60, 60))
-# draw_graph_with_labels(aG, (60, 60), 'circo', "test6.png")
-# for file_being_checked in processed_files:
-# print(file_being_checked.name, file_being_checked.lines_of_code, file_being_checked.depends_on)
+for n in range(5):
+    if n != 0:
+        # Add "tools", "test", "model", "apimux", "wordstats", "setuptools", "python", "util" to exclude individual files
+        # from analysis
+        files_to_exclude = []
+        files = get_all_files_without_type(files_to_exclude)
+        new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
+
+        # Add options to remove files from being added into the graph
+        DGW = dependencies_digraph(new_list,
+                                   [])
+        DGWEe = remove_singleEdges(DGW)
+
+        aG = abstraceted_to_top_level(DGWEe, n)
+        removed_aG = remove_singleEdges(aG)
+        # Add variables to ignore adding dependencies to
+        addedEdges_code = add_dependency_edges(DGWEe, removed_aG, n,
+                                               [])
+
+        aGE = abstraceted_to_top_level_connection_version(DGWEe, n)
+        removed_aGE = remove_singleEdges(aGE)
+        # Add variables to ignore adding dependencies to
+        addedEdges = add_dependency_edges(DGWEe, removed_aGE, n,
+                                          [])
+
+        draw_graph3(addedEdges_code, True, 'graph_code_depth' + str(n) + '.html')
+        draw_graph3(addedEdges, True, 'graph_depth' + str(n) + '.html')
