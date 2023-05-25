@@ -15,7 +15,7 @@ CODE_ROOT_FOLDER = cwd + "/content/Zeeguu-API/"
 
 Requirements_Folder = cwd + "/requirements.txt"
 
-files_to_exclude = ["test", "model", "tools"]
+files_to_exclude = []
 
 
 class Dependency:
@@ -235,6 +235,31 @@ def getLast(module_name):
     return components[len(components) - 1]
 
 
+def get_level_name(module_name, depth):
+    if "." in module_name:
+        skip = 0
+        if depth > 1:
+            skip = depth - 1
+
+        components = module_name.split(".")
+        result = components[skip]
+        newComp = components[skip + 1:]
+        if len(newComp) == 0 or depth == 0:
+            return result
+        else:
+            count = 1 + skip
+            for ele in newComp:
+
+                result = ele
+
+                if count == depth:
+                    return result
+                count = count + 1
+
+    else:
+        return module_name
+
+
 def get_level_module(module_name, depth):
     if "." in module_name:
         skip = 0
@@ -283,17 +308,18 @@ def get_level_module_no_skip(module_name, depth):
 
 def calculate_how_many_connections(G, currentItem):
     sizes = nx.get_node_attributes(G, "size")
-    mentions = 100
+    mentions = 10
     for key, val in sizes.items():
         if currentItem in key and currentItem != key:
-            mentions = mentions + 100
+            if mentions < 50:
+                mentions = mentions + 1
 
     return mentions
 
 
 def calculate_total_amount_of_code(G, currentItem):
     sizes = nx.get_node_attributes(G, "size")
-    totalCode = 100
+    totalCode = 1
     for key, val in sizes.items():
         if key == currentItem:
             totalCode = totalCode + val
@@ -311,10 +337,12 @@ def abstraceted_to_top_level(G, depth_cap=-1):
                 if get_level_module(item, x) not in aG.nodes and get_level_module(item, x) != "":
                     if x == 0:
                         aG.add_node(get_level_module(item, x),
-                                    size=calculate_total_amount_of_code(G, get_level_module_no_skip(item, x)) + 500,
+                                    label=get_level_name(item, x),
+                                    size=calculate_total_amount_of_code(G, get_level_module_no_skip(item, x)) + 5,
                                     color="orange")
                     else:
                         aG.add_node(get_level_module(item, x),
+                                    label=get_level_name(item, x),
                                     size=calculate_total_amount_of_code(G, get_level_module_no_skip(item, x)),
                                     color="lightblue")
                     if x > 0 and get_level_module(item, x - 1) != "":
@@ -343,10 +371,12 @@ def abstraceted_to_top_level_connection_version(G, depth_cap=-1):
                 if get_level_module(item, x) not in aG.nodes and get_level_module(item, x) != "":
                     if x == 0:
                         aG.add_node(get_level_module(item, x),
+                                    label=get_level_name(item, x),
                                     size=calculate_how_many_connections(G, get_level_module_no_skip(item, x)),
                                     color="orange")
                     else:
                         aG.add_node(get_level_module(item, x),
+                                    label=get_level_name(item, x),
                                     size=calculate_how_many_connections(G, get_level_module_no_skip(item, x)),
                                     color="lightblue")
                     if x > 0 and get_level_module(item, x - 1) != "":
@@ -394,36 +424,97 @@ def add_dependency_edges(G, aG, depth_cap=-1, ignore_edges=[]):
             destination = get_biggest_reference(aG, each[1], depth_cap)
             if source != destination and aG.has_node(source) and aG.has_node(destination) and not aG.has_edge(
                     destination, source):
-                aG.add_edge(source, destination, color='orange')
+                aG.add_edge(destination, source, color='orange')
             # aG.add_edge(source, destination)
     return aG
 
 
-files_to_exclude = ["test", "model", "tools", "util"]
+files_to_exclude = ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python", "util"]
 files = get_all_files_without_type(files_to_exclude)
-
+# "tools","test",  "model", "apimux","wordstats", "setuptools","python", "util"
 # processed_files = get_imports_for_files(files, dependencies_to_ignore)
 # DG = dependencies_digraph(processed_files, ["test", "model", "tools", "util"])
 # DGWE = remove_singleEdges(DG)
-for x in range(3):
-    new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
-    DGW = dependencies_digraph(new_list, ["test", "model", "tools", "util"])
-    DGWEe = remove_singleEdges(DGW)
 
-    aG = abstraceted_to_top_level(DGWEe, x)
-    removed_aG = remove_singleEdges(aG)
-    addedEdges_code = add_dependency_edges(DGWEe, removed_aG, x, ["tools", "test", "model"])
-    draw_graph_with_labels(addedEdges_code, (30, 30), 'circo', "code_size_graph_v1_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges_code, (30, 30), 'neato', "code_size_graph_v2_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges_code, (30, 30), 'twopi', "code_size_graph_v3_" + str(x) + ".png")
+new_list = get_imports_for_files_no_smaller_files(files, dependencies_to_ignore)
+DGW = dependencies_digraph(new_list, ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python", "util"])
+DGWEe = remove_singleEdges(DGW)
 
-    aGE = abstraceted_to_top_level_connection_version(DGWEe, x)
-    removed_aGE = remove_singleEdges(aGE)
-    addedEdges = add_dependency_edges(DGWEe, removed_aGE, x, ["tools", "test", "model"])
+aG = abstraceted_to_top_level(DGWEe, 4)
+removed_aG = remove_singleEdges(aG)
+addedEdges_code = add_dependency_edges(DGWEe, removed_aG, 4,
+                                       ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python",
+                                        "util"])
+# draw_graph_with_labels(addedEdges_code, (30, 30), 'circo', "code_size_graph_v1_" + str(4) + ".png")
+# draw_graph_with_labels(addedEdges_code, (30, 30), 'neato', "code_size_graph_v2_" + str(4) + ".png")
+# draw_graph_with_labels(addedEdges_code, (30, 30), 'twopi', "code_size_graph_v3_" + str(4) + ".png")
 
-    draw_graph_with_labels(addedEdges, (30, 30), 'circo', "connection_graph_v1_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges, (30, 30), 'neato', "connection_graph_v2_" + str(x) + ".png")
-    draw_graph_with_labels(addedEdges, (30, 30), 'twopi', "connection_graph_v3_" + str(x) + ".png")
+aGE = abstraceted_to_top_level_connection_version(DGWEe, 4)
+removed_aGE = remove_singleEdges(aGE)
+addedEdges = add_dependency_edges(DGWEe, removed_aGE, 4,
+                                  ["tools", "test", "model", "apimux", "wordstats", "setuptools", "python", "util"])
+
+
+def draw_graph3(networkx_graph, notebook=True, output_filename='graph.html', show_buttons=True,
+                only_physics_buttons=False):
+    """
+    This function accepts a networkx graph object,
+    converts it to a pyvis network object preserving its node and edge attributes,
+    and both returns and saves a dynamic network visualization.
+
+    Valid node attributes include:
+        "size", "value", "title", "x", "y", "label", "color".
+
+        (For more info: https://pyvis.readthedocs.io/en/latest/documentation.html#pyvis.network.Network.add_node)
+
+    Valid edge attributes include:
+        "arrowStrikethrough", "hidden", "physics", "title", "value", "width"
+
+        (For more info: https://pyvis.readthedocs.io/en/latest/documentation.html#pyvis.network.Network.add_edge)
+
+
+    Args:
+        networkx_graph: The graph to convert and display
+        notebook: Display in Jupyter?
+        output_filename: Where to save the converted network
+        show_buttons: Show buttons in saved version of network?
+        only_physics_buttons: Show only buttons controlling physics of network?
+    """
+
+    # import
+    from pyvis import network as net
+
+    # make a pyvis network
+    pyvis_graph = net.Network(notebook=notebook)
+
+    # for each node and its attributes in the networkx graph
+    for node, node_attrs in networkx_graph.nodes(data=True):
+        pyvis_graph.add_node(str(node), **node_attrs)
+
+    # for each edge and its attributes in the networkx graph
+    for source, target, edge_attrs in networkx_graph.edges(data=True):
+        # if value/width not specified directly, and weight is specified, set 'value' to 'weight'
+        if not 'value' in edge_attrs and not 'width' in edge_attrs and 'weight' in edge_attrs:
+            # place at key 'value' the weight of the edge
+            edge_attrs['value'] = edge_attrs['weight']
+        # add the edge
+        pyvis_graph.add_edge(str(source), str(target), **edge_attrs)
+
+    # turn buttons on
+    if show_buttons:
+        if only_physics_buttons:
+            pyvis_graph.show_buttons(filter_=['physics'])
+        else:
+            pyvis_graph.show_buttons()
+
+    # return and also save
+    return pyvis_graph.show("WOWWW.html")
+
+
+draw_graph3(addedEdges)
+# draw_graph_with_labels(addedEdges, (30, 30), 'circo', "connection_graph_v1_" + str(4) + ".png")
+# draw_graph_with_labels(addedEdges, (30, 30), 'neato', "connection_graph_v2_" + str(4) + ".png")
+# draw_graph_with_labels(addedEdges, (30, 30), 'twopi', "connection_graph_v3_" + str(4) + ".png")
 # draw_graph_with_labels(aG, (60, 60))
 # draw_graph_with_labels(aG, (60, 60), 'circo', "test6.png")
 # for file_being_checked in processed_files:
